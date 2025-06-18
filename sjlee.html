@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>추가 퀘스트: 네사추 빙고</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+        :root {
+            --main-yellow: #fdd835; /* 캐릭터의 노란색을 강조색으로 지정 */
+            --primary-dark-transparent: rgba(30, 30, 30, 0.85);
+            --secondary-dark: #2c2c2c;
+            --light-text: #e0e0e0;
+            --dark-text: #121212;
+            --correct-green: #2E7D32;
+            --correct-green-border: #388E3C;
+            --incorrect-red: #C62828;
+            --incorrect-red-border: #D32F2F;
+        }
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-image: url('https://sgimage.netmarble.com/images/netmarble/COMMON/20250617/sife1750122806201.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; /* 스크롤 시 배경 고정 */
+            
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--light-text);
+            overflow: auto; 
+            padding: 20px 0;
+        }
+
+        .game-container {
+            text-align: center;
+            background: var(--primary-dark-transparent);
+            backdrop-filter: blur(8px); /* 블러 효과 강화 */
+            padding: 20px 40px 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.5);
+            position: relative;
+            max-width: 550px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: var(--main-yellow); /* 강조색 제목 */
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .controls-info {
+            background-color: var(--secondary-dark);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: inline-block;
+            border: 1px solid #444;
+        }
+        
+        .controls-info p {
+            margin: 5px 0;
+            font-size: 1em;
+            color: var(--light-text);
+        }
+        
+        .controls-info strong {
+            color: var(--main-yellow);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(80px, 100px));
+            grid-template-rows: repeat(3, minmax(80px, 100px));
+            gap: 10px;
+            position: relative; /* 자식 요소인 #cat의 기준점이 됨 */
+            margin: 0 auto;
+            width: fit-content;
+        }
+
+        .grid-cell {
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 44, 44, 0.8);
+            border: 2px solid #444;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--main-yellow);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .grid-cell.correct {
+            background-color: var(--correct-green);
+            border-color: var(--correct-green-border);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .grid-cell.incorrect {
+            background-color: var(--incorrect-red);
+            border-color: var(--incorrect-red-border);
+            color: white;
+        }
+
+        #cat {
+            position: absolute; /* grid-container를 기준으로 위치 잡음 */
+            width: 80px;
+            height: 80px;
+            transition: all 0.3s ease-in-out;
+            pointer-events: none; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        #cat img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.5));
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .quiz-modal {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            border: 1px solid #555;
+        }
+        
+        .modal-overlay.show .quiz-modal {
+            transform: scale(1);
+        }
+
+        #quiz-question {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: var(--light-text);
+        }
+
+        #quiz-options {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        #quiz-options li {
+            background: #3c3c3c;
+            color: var(--light-text);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        #quiz-options li.selected {
+            background: #4a4a4a;
+            border-color: var(--main-yellow);
+        }
+
+        /* 정답/오답 표시 스타일 추가 */
+        #quiz-options li.correct-answer {
+            background-color: var(--correct-green);
+            color: white;
+            border-color: var(--correct-green-border);
+        }
+        #quiz-options li.wrong-answer {
+            background-color: var(--incorrect-red);
+            color: white;
+            border-color: var(--incorrect-red-border);
+        }
+
+        #game-result {
+            position: fixed; 
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e1e1e;
+            color: var(--main-yellow);
+            padding: 30px 50px;
+            border-radius: 20px;
+            font-size: 3em;
+            z-index: 2000;
+            display: none; 
+            animation: fadeInZoom 0.5s ease-out;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            border: 2px solid var(--main-yellow);
+        }
+        
+        @keyframes fadeInZoom {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        #restart-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            font-family: 'Jua', sans-serif;
+            border: none;
+            background-color: var(--main-yellow);
+            color: var(--dark-text);
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        #restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.3);
+        }
+        
+        .notice {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: rgba(44, 44, 44, 0.8);
+            border: 2px dashed var(--main-yellow);
+            border-radius: 10px;
+            text-align: center;
+        }
+        .notice p {
+            margin: 0;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>추가 퀘스트: 네사추 빙고</h1>
+        <div class="controls-info">
+            <p><strong>이동:</strong> ← ↑ → ↓ 방향키</p>
+            <p><strong>선택/실행:</strong> Enter</p>
+        </div>
+        <div id="game-board">
+            <div class="grid-container" id="grid-container">
+                <div id="cat">
+                    <img src="https://sgimage.netmarble.com/images/netmarble/COMMON/20250616/rbng1750072597594.png" alt="Game Character" onerror="this.onerror=null; this.src='https://placehold.co/80x80/ffdd00/333333?text=Error';">
+                </div>
+                <!-- 셀은 JS로 생성 -->
+            </div>
+        </div>
+        <button id="restart-button">다시 시작하기</button>
+        
+        <div class="notice">
+            <p>빙고 퀘스트를 완료하셨다면, 화면을 캡쳐해서<br>인사기획팀(이서진님)에 네이버웍스를 보내주세요.<br>행운의 선물이 기다리고있어요.</p>
+        </div>
+    </div>
+
+    <div id="game-result"></div>
+
+    <div class="modal-overlay" id="quiz-modal-overlay">
+        <div class="quiz-modal">
+            <p id="quiz-question">문제가 여기에 표시됩니다.</p>
+            <ul id="quiz-options">
+                <!-- 선택지는 JS로 생성 -->
+            </ul>
+             <p style="font-size: 0.9em; color: #888;">(방향키로 선택, Enter로 확정)</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 새로운 퀴즈 데이터 (정답 인덱스 수정) ---
+        const quizzes = [
+            { question: "다음 중 2025 네오 집중 사내추천 대상이 아닌 것은 무엇일까요?", options: ["내 친구", "내 지인의 직장동료", "우리집 고양이"], answer: 2 },
+            { question: "다음 중 사내추천 대상 직무가 아닌 것을 고르세요.", options: ["프로그래밍", "아트", "고양이 집사"], answer: 2 },
+            { question: "사내추천 성공 시 받을 수 있는 금전 리워드는 무엇일까요?", options: ["내 동료를 내가 스카웃했다는 뿌듯함", "인사팀의 무한 칭찬", "추천 포상금 100만원 (소개는 50만원)"], answer: 2 },
+            { question: "추천하고 싶은 지인이 생겼을 때, 가장 먼저 해야 할 일은?", options: ["적합한 지인에게 회사를 소개하고 지원을 권유한다.", "채용 홈페이지에서 추천 접수한다", "내 자리 옆에 책상을 미리 놓아준다"], answer: 0 },
+            { question: "추천할 사람은 떠오르는데 어떤 공고에 추천할 지 잘 모르겠는 경우는?", options: ["직무만 구분해서 사내추천 통합 공고로 추천하거나 인사기획팀에 문의한다.", "아쉽지만 추천하지 않는다..", "짜장면을 시켜먹는다."], answer: 0 },
+            { question: "다음 중 사내추천이 가장 곤란해지는 상황은?", options: ["추천한 친구가 면접에서 내 흉을 봤을 때", "추천한 친구가 나보다 먼저 승진했을 때", "추천한 친구가 내 과자를 뺏어 먹을 때"], answer: 0 },
+            { question: "추천하고 싶은 지인이 없을 때, 해야할 일은?", options: ["지인에게 인재 소개를 요청한다.", "낮잠잔다.", "아샷추 시켜먹는다."], answer: 0 },
+            { question: "사내추천 관련 문의는 어느 팀에 해야 할까요?", options: ["밥 잘 사주는 옆팀 선배", "인사기획팀", "ㅋㅋ다방 바리스타님"], answer: 1 },
+            { question: "추천할 후보자를 판단할 때 가장 중요한 점은?", options: ["나와 MBTI 궁합이 잘 맞는지", "퇴근 후 같이 PC방 갈 수 있는지", "직무 전문성과 열정"], answer: 2 }
+        ];
+
+        // --- DOM 요소 ---
+        const gridContainer = document.getElementById('grid-container');
+        const cat = document.getElementById('cat');
+        const modalOverlay = document.getElementById('quiz-modal-overlay');
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptionsList = document.getElementById('quiz-options');
+        const gameResult = document.getElementById('game-result');
+        const restartButton = document.getElementById('restart-button');
+
+        // --- 게임 상태 변수 ---
+        let catPosition = 0; // 0 ~ 8
+        let cellStates = Array(9).fill('unsolved'); // 'unsolved', 'correct', 'incorrect'
+        let isModalOpen = false;
+        let selectedOptionIndex = 0;
+        let isGameOver = false;
+
+        // --- 초기화 함수 ---
+        function initGame() {
+            catPosition = 0;
+            cellStates = Array(9).fill('unsolved');
+            isModalOpen = false;
+            selectedOptionIndex = 0;
+            isGameOver = false;
+
+            const cells = gridContainer.querySelectorAll('.grid-cell');
+            cells.forEach(cell => cell.remove());
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('grid-cell');
+                cell.dataset.index = i;
+                gridContainer.appendChild(cell);
+            }
+            
+            updateGridAppearance();
+            gameResult.style.display = 'none';
+            modalOverlay.classList.remove('show');
+            requestAnimationFrame(updateCatPosition);
+        }
+
+        // --- 캐릭터 위치 업데이트 ---
+        function updateCatPosition() {
+            const cell = gridContainer.querySelectorAll('.grid-cell')[catPosition];
+            if (!cell) return;
+            
+            const catSize = cat.offsetWidth;
+            const cellSize = cell.offsetWidth;
+            const offset = (cellSize - catSize) / 2;
+
+            cat.style.top = `${cell.offsetTop + offset}px`;
+            cat.style.left = `${cell.offsetLeft + offset}px`;
+        }
+
+        // --- 그리드 외관 업데이트 ---
+        function updateGridAppearance() {
+            const cells = gridContainer.querySelectorAll('.grid-cell');
+            cells.forEach((cell, i) => {
+                cell.className = 'grid-cell';
+                if (cellStates[i] === 'correct') {
+                    cell.classList.add('correct');
+                    cell.textContent = 'O';
+                } else if (cellStates[i] === 'incorrect') {
+                    cell.classList.add('incorrect');
+                    cell.textContent = 'X';
+                } else {
+                    cell.textContent = '';
+                }
+            });
+        }
+
+        // --- 퀴즈 모달 열기 ---
+        function showQuiz() {
+            if (cellStates[catPosition] !== 'unsolved' || isGameOver) return;
+
+            isModalOpen = true;
+            selectedOptionIndex = 0;
+            const quiz = quizzes[catPosition];
+
+            quizQuestion.textContent = `Q${catPosition + 1}. ${quiz.question}`;
+            quizOptionsList.innerHTML = '';
+
+            quiz.options.forEach((option, index) => {
+                const li = document.createElement('li');
+                li.textContent = `${index + 1}) ${option}`;
+                li.dataset.index = index;
+                if (index === 0) {
+                    li.classList.add('selected');
+                }
+                quizOptionsList.appendChild(li);
+            });
+
+            modalOverlay.classList.add('show');
+        }
+
+        // --- 퀴즈 모달 닫기 ---
+        function hideQuiz() {
+            isModalOpen = false;
+            modalOverlay.classList.remove('show');
+        }
+
+        // --- 정답 확인 ---
+        function checkAnswer() {
+            const quiz = quizzes[catPosition];
+            const options = quizOptionsList.children;
+            const correctOptionEl = options[quiz.answer];
+            const selectedOptionEl = options[selectedOptionIndex];
+
+            if (selectedOptionIndex === quiz.answer) {
+                cellStates[catPosition] = 'correct';
+                hideQuiz();
+                updateGridAppearance();
+                checkBingo();
+            } else {
+                cellStates[catPosition] = 'incorrect';
+                
+                // 정답/오답 하이라이트
+                correctOptionEl.classList.add('correct-answer');
+                selectedOptionEl.classList.add('wrong-answer');
+                
+                // 1.5초 후 모달 닫고 다음 진행
+                setTimeout(() => {
+                    hideQuiz();
+                    updateGridAppearance();
+                    checkBingo();
+                    // 클래스 초기화 (다음 퀴즈를 위해)
+                    correctOptionEl.classList.remove('correct-answer');
+                    selectedOptionEl.classList.remove('wrong-answer');
+                }, 1500);
+            }
+        }
+        
+        // --- 빙고 확인 및 게임 종료 조건 체크 ---
+        function checkBingo() {
+            if (isGameOver) return;
+
+            // 1. 미션 클리어 (전부 정답)
+            const correctCount = cellStates.filter(state => state === 'correct').length;
+            if (correctCount === 9) {
+                gameResult.textContent = '✨ 미션 클리어! ✨';
+                gameResult.style.display = 'block';
+                isGameOver = true;
+                return;
+            }
+
+            // 2. 모든 문제를 다 풀었을 때 (게임 종료)
+            const unsolvedCount = cellStates.filter(state => state === 'unsolved').length;
+            if (unsolvedCount === 0) {
+                const lines = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                    [0, 4, 8], [2, 4, 6]
+                ];
+                let bingoCount = 0;
+                for (const line of lines) {
+                    const [a, b, c] = line;
+                    if (cellStates[a] === 'correct' && cellStates[b] === 'correct' && cellStates[c] === 'correct') {
+                        bingoCount++;
+                    }
+                }
+                
+                if (bingoCount > 0) {
+                    gameResult.textContent = `🎉 ${bingoCount} 빙고! 🎉`;
+                } else {
+                    gameResult.textContent = '아쉽지만... 다음 기회에! 😿';
+                }
+                gameResult.style.display = 'block';
+                isGameOver = true;
+            }
+            // 빙고가 나왔어도 모든 문제를 풀기 전까지는 게임이 끝나지 않음
+        }
+        
+        // --- 키보드 입력 처리 ---
+        function handleKeyDown(e) {
+            if (isGameOver) return;
+            
+            if (isModalOpen) {
+                e.preventDefault(); 
+                const options = quizOptionsList.children;
+                if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    options[selectedOptionIndex].classList.remove('selected');
+                    selectedOptionIndex = (selectedOptionIndex - 1 + options.length) % options.length;
+                    options[selectedOptionIndex].classList.add('selected');
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    options[selectedOptionIndex].classList.remove('selected');
+                    selectedOptionIndex = (selectedOptionIndex + 1) % options.length;
+                    options[selectedOptionIndex].classList.add('selected');
+                } else if (e.key === 'Enter') {
+                     checkAnswer();
+                }
+            } else {
+                let moved = false;
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        catPosition = (catPosition - 1 + 9) % 9;
+                        moved = true;
+                        break;
+                    case 'ArrowRight':
+                        catPosition = (catPosition + 1) % 9;
+                        moved = true;
+                        break;
+                    case 'ArrowUp':
+                        catPosition = (catPosition - 3 + 9) % 9;
+                        moved = true;
+                        break;
+                    case 'ArrowDown':
+                        catPosition = (catPosition + 3) % 9;
+                        moved = true;
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        showQuiz();
+                        break;
+                }
+                if (moved) {
+                    e.preventDefault(); 
+                    updateCatPosition();
+                }
+            }
+        }
+
+        // --- 이벤트 리스너 ---
+        document.addEventListener('keydown', handleKeyDown);
+        restartButton.addEventListener('click', initGame);
+        window.addEventListener('resize', updateCatPosition);
+
+        // --- 게임 시작 ---
+        initGame();
+
+    </script>
+</body>
+</html>
